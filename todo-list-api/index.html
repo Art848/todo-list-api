@@ -1,0 +1,525 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C# Todo Pro | Modern Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .task-card {
+            transition: all 0.2s ease-in-out;
+        }
+
+            .task-card:hover {
+                transform: translateY(-2px);
+            }
+
+        .completed-task {
+            opacity: 0.5;
+            background-color: #f3f4f6;
+        }
+
+            .completed-task h3 {
+                text-decoration: line-through;
+            }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+    <!-- Auth Container -->
+    <div id="auth-section" class="flex items-center justify-center min-h-screen px-4">
+        <div class="max-w-md w-full bg-white p-10 rounded-3xl shadow-2xl border border-slate-100">
+
+            <!-- ՄՈՒՏՔԻ ԲԱԺԻՆ (LOGIN) -->
+            <div id="login-form">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-slate-800">Մուտք</h2>
+                    <p class="text-slate-500 mt-2">Բարի վերադարձ</p>
+                </div>
+                <div class="space-y-4">
+                    <input type="text" id="username" placeholder="Օգտանուն" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="password" id="password" placeholder="Գաղտնաբառ" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition shadow-lg">Մուտք Գործել</button>
+                    <p class="text-center text-sm text-slate-500">
+                        Չունե՞ք հաշիվ: <button onclick="toggleAuthMode()" class="text-blue-600 font-bold hover:underline">Գրանցվել</button>
+                    </p>
+                </div>
+            </div>
+
+            <!-- ԳՐԱՆՑՄԱՆ ԲԱԺԻՆ (REGISTER) - Սկզբում թաքնված է -->
+            <div id="register-form" class="hidden">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-slate-800">Գրանցում</h2>
+                    <p class="text-slate-500 mt-2">Ստեղծեք նոր հաշիվ</p>
+                </div>
+                <div class="space-y-4">
+                    <input type="text" id="reg-username" placeholder="Ընտրեք օգտանուն" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-green-500">
+                    <input type="password" id="reg-password" placeholder="Ստեղծեք գաղտնաբառ" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-green-500">
+                    <input type="email" id="reg-email" placeholder="Էլ․հասցե" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-green-500">
+                    <button onclick="handleRegister()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl transition shadow-lg">Գրանցվել</button>
+                    <p class="text-center text-sm text-slate-500">
+                        Արդեն ունե՞ք հաշիվ: <button onclick="toggleAuthMode()" class="text-blue-600 font-bold hover:underline">Մուտք գործել</button>
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-section" class="max-w-4xl mx-auto py-12 px-6 hidden">
+        <header class="flex justify-between items-center mb-12">
+            <div>
+                <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight">Իմ Գործերը</h1>
+                <p class="text-slate-500 mt-1">Ողջույն, <span id="display-user" class="font-semibold text-blue-600 underline decoration-blue-200 underline-offset-4"></span></p>
+            </div>
+            <button onclick="handleLogout()" class="group flex items-center gap-2 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-100 text-slate-600 hover:text-red-600 px-5 py-2.5 rounded-xl font-medium transition-all">
+                <span>Ելք</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
+        </header>
+
+        <div id="admin-controls" class="hidden mt-8 p-6 bg-purple-50 rounded-3xl border border-purple-200">
+            <h2 class="text-2xl font-bold text-purple-800 mb-4">Admin Dashboard</h2>
+            <div class="flex gap-4 mb-6">
+                <button onclick="loadAllUsers()" class="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition">Տեսնել բոլոր օգտատերերին</button>
+                <button onclick="loadAllTasksAdmin()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition">Տեսնել բոլոր առաջադրանքները</button>
+            </div>
+            <div id="admin-display-area" class="space-y-4">
+                <!-- Այստեղ կհայտնվեն կամ օգտատերերը, կամ բոլորի task-երը -->
+            </div>
+        </div>
+
+        <!-- Input Section -->
+        <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 mb-10">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <input type="text" id="task-title" placeholder="Ի՞նչ պետք է անել..." class="p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition">
+                <input type="text" id="task-desc" placeholder="Լրացուցիչ նկարագրություն" class="p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition">
+                <input type="date" id="task-duedate" placeholder="" class="p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition text-slate-500">
+            </div>
+            <button onclick="addTask()" class="w-full bg-slate-900 hover:bg-black text-white font-bold py-4 rounded-2xl transition shadow-xl flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
+                Ավելացնել Առաջադրանք
+            </button>
+        </div>
+
+        <!-- Task List Container -->
+        <div id="task-list" class="grid gap-4">
+            <!-- Dynamic tasks go here -->
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const API_BASE_URL = 'https://localhost:7059/api';
+        let currentUser = { id: 1, name: '', isAdmin: false };
+
+        // 1. Փոխել Մուտք/Գրանցում դաշտերը
+        function toggleAuthMode() {
+            document.getElementById('login-form').classList.toggle('hidden');
+            document.getElementById('register-form').classList.toggle('hidden');
+        }
+
+        // 2. Գրանցման հարցումը
+        async function handleRegister() {
+            const user = document.getElementById('reg-username').value;
+            const pass = document.getElementById('reg-password').value;
+            const email = document.getElementById('reg-email').value;
+
+            if (!user || !pass || !email) {
+                alert("Խնդրում ենք լրացնել բոլոր դաշտերը:");
+                return;
+            }
+
+            const userData = {
+                username: user,
+                password: pass,
+                email: email,
+                isAdmin: false // Միշտ սահմանում ենք որպես հասարակ օգտատեր
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/User/userRegistration`, { // Համոզվեք, որ այս endpoint-ը կա
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+
+                if (response.ok) {
+                    alert("Շնորհավորում ենք, գրանցումը հաջողվեց: Այժմ կարող եք մուտք գործել:");
+                    toggleAuthMode(); // Վերադառնում ենք Login էջին
+                } else {
+                    const err = await response.text();
+                    alert("Գրանցման սխալ: " + err);
+                }
+            } catch (err) {
+                console.error("Register error:", err);
+            }
+        }
+
+        async function handleLogin() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            if (!user || !pass) {
+                alert("Խնդրում ենք լրացնել բոլոր դաշտերը");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/User/userLogin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+
+                // Ենթադրենք սերվերը վերադարձնում է կամ օգտատիրոջ օբյեկտը, կամ true/false
+                const data = await response.json();
+                console.log("Server response:", data);
+
+                if (data === true || (typeof data === 'object' && data !== null)) {
+                    // 1. Տվյալների պահպանում
+                    currentUser.name = user;
+                    currentUser.isAdmin = (user.toLowerCase() === 'admin');
+
+                    // ՈՒՇԱԴՐՈՒԹՅՈՒՆ: Եթե սերվերը ID չի տալիս, սա ժամանակավոր լուծում է
+                    // Իրականում պետք է լինի currentUser.id = data.id;
+                    if (typeof data === 'object' && data.id) {
+                        currentUser.id = data.id;
+                    } else {
+                        currentUser.id = currentUser.isAdmin ? 1 : 2; // Փորձնական ID-ներ
+                    }
+
+                    // 2. UI-ի փոփոխություն
+                    document.getElementById('auth-section').classList.add('hidden');
+                    document.getElementById('app-section').classList.remove('hidden');
+                    document.getElementById('display-user').innerText = user;
+
+                    // 3. Ադմինի դաշտի ցուցադրում
+                    const adminControls = document.getElementById('admin-controls');
+                    if (currentUser.isAdmin) {
+                        adminControls.classList.remove('hidden');
+                        loadAllTasksAdmin(); // Բեռնում ենք բոլորի գործերը
+                    } else {
+                        adminControls.classList.add('hidden');
+                        loadTasks(); // Բեռնում ենք միայն իր գործերը
+                    }
+                } else {
+                    alert("Մուտքը մերժված է. սխալ տվյալներ");
+                }
+            } catch (err) {
+                console.error("Login error:", err);
+                alert("Սերվերի հետ կապի սխալ:");
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                // Քո Controller-ում սպասվում է LoginDTO:
+                // Եթե սերվերն այն պարտադիր չի պահանջում logout-ի համար, կարող ես դատարկ ուղարկել:
+                const logoutData = {
+                    username: currentUser.name,
+                    password: ""
+                };
+
+                // Կանչում ենք սերվերի logout endpoint-ը
+                const response = await fetch(`${API_BASE_URL}/User/userLogout`, {
+                    method: 'POST', // Չնայած քո կոդում [HttpGet] է, բայց եթե փոխել ես POST-ի, այստեղ նույնպես փոխիր
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(logoutData)
+                });
+
+                if (response.ok) {
+                    console.log("Logged out from server");
+                }
+            } catch (err) {
+                console.error("Logout error:", err);
+            } finally {
+                // Անկախ API-ի պատասխանից, մաքրում ենք UI-ն
+                resetUI();
+            }
+        }
+
+        async function addTask() {
+            const title = document.getElementById('task-title').value;
+            const desc = document.getElementById('task-desc').value;
+            const dueDate = document.getElementById('task-duedate').value; // Ստանում ենք արժեքը
+
+            if (!title) {
+                alert("Խնդրում ենք լրացնել վերնագիրը");
+                return;
+            }
+
+            const newTask = {
+                title: title,
+                description: desc, // Համոզվեք, որ Backend-ում սա Description է կոչվում
+                dueDate: dueDate,   // Ուղարկում ենք ISO ձևաչափով (YYYY-MM-DD)
+                isDone: false,
+                userId: currentUser.id
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/TaskItem/createTask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newTask)
+                });
+
+                if (response.ok) {
+                    // Մաքրում ենք դաշտերը
+                    document.getElementById('task-title').value = '';
+                    document.getElementById('task-desc').value = '';
+                    document.getElementById('task-duedate').value = '';
+                    loadTasks(); // Վերաբեռնում ենք ցուցակը
+                }
+            } catch (err) {
+                console.error("Error adding task:", err);
+            }
+        }
+
+        async function toggleTask(id, currentStatus, title, description, dueDate, taskUserId) {
+            const taskData = {
+                id: id,
+                title: title,
+                description: description,
+                dueDate: dueDate,
+                isDone: !currentStatus,
+                userId: taskUserId // Կարևոր է ուղարկել հենց այս Task-ի UserId-ն
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/TaskItem/updateTask?id=${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(taskData)
+                });
+
+                if (response.ok) {
+                    currentUser.isAdmin ? loadAllTasksAdmin() : loadTasks();
+                } else {
+                    const err = await response.text();
+                    console.error("Update failed:", err);
+                }
+            } catch (err) {
+                console.error("Fetch error:", err);
+            }
+        }
+
+        // 2. Առաջադրանքի ջնջում
+        async function deleteTask(id) {
+            if (!confirm("Վստա՞հ եք:")) return;
+
+            // Տպում ենք կոնսոլում՝ ստուգելու համար
+            console.log("Current User Object:", currentUser);
+            console.log("Attempting to delete Task ID:", id);
+            console.log("Using User ID:", currentUser.id);
+
+            try {
+                // Համոզվեք, որ currentUser.id-ն գոյություն ունի, թե չէ ուղարկեք 0
+                const uId = currentUser.id || 0;
+
+                const response = await fetch(`${API_BASE_URL}/TaskItem/deleteTask?id=${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    currentUser.isAdmin ? loadAllTasksAdmin() : loadTasks();
+                } else {
+                    const errText = await response.text();
+                    alert("Սերվերի պատասխանը: " + errText);
+                }
+            } catch (err) {
+                console.error("Fetch Error:", err);
+            }
+        }
+
+
+        function resetUI() {
+            // 1. Մաքրում ենք օգտատիրոջ տվյալները memory-ից
+            currentUser = { id: 0, name: '', isAdmin: false };
+
+            // 2. Թաքցնում ենք հավելվածի բաժինները
+            document.getElementById('app-section').classList.add('hidden');
+            document.getElementById('admin-controls').classList.add('hidden'); // Եթե ադմին էր
+
+            // 3. Ցուցադրում ենք Login բաժինը
+            document.getElementById('auth-section').classList.remove('hidden');
+
+            // 4. Մաքրում ենք input դաշտերը
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+
+            // 5. Մաքրում ենք task-երի ցուցակը, որ հաջորդ օգտատերը հին տվյալները չտեսնի
+            document.getElementById('task-list').innerHTML = '';
+            if (document.getElementById('admin-display-area')) {
+                document.getElementById('admin-display-area').innerHTML = '';
+            }
+        }
+
+        function afterLogin(data) {
+            currentUser.id = data.id;
+            currentUser.username = data.username;
+            currentUser.isAdmin = data.isAdmin;
+
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('app-section').classList.remove('hidden');
+
+            // ԿԱՐԵՎՈՐ ՇՏԿՈՒՄԸ ԱՅՍՏԵՂ Է
+            if (currentUser.isAdmin) {
+                loadAllTasksAdmin(); // Ադմինը տեսնում է ամեն ինչ
+            } else {
+                loadTasks(); // Սովորական օգտատերը տեսնում է ՄԻԱՅՆ ԻՐԵՆԸ
+            }
+        }
+
+        // Ֆունկցիան, որը բերում է միայն տվյալ օգտատիրոջ task-երը
+        async function loadTasks() {
+            try {
+                // Հարցման մեջ ուղարկում ենք userId-ն
+                const response = await fetch(`${API_BASE_URL}/TaskItem/getAllTasksOfUser`);
+                const tasks = await response.json();
+
+                // renderTasks-ը կնկարի միայն ստացված (իր) task-երը
+                renderTasks(tasks);
+            } catch (err) {
+                console.error("Error loading user tasks:", err);
+            }
+        }
+
+        // --- ADMIN FUNCTIONS ---
+
+        // 1. Տեսնել բոլոր օգտատերերին
+        async function loadAllUsers() {
+            const response = await fetch(`${API_BASE_URL}/User/getAllUsers`);
+            const users = await response.json();
+
+            const display = document.getElementById('admin-display-area');
+            display.innerHTML = '<h3 class="font-bold">Բոլոր Օգտատերերը:</h3>';
+
+            users.forEach(u => {
+                display.innerHTML += `
+                    <div class="p-3 bg-white border rounded-xl flex justify-between">
+                        <span>Username: <b>${u.username}</b>     User ID: <b>${u.id}</b> </span>
+                    </div>`;
+            });
+        }
+
+        // 2. Տեսնել բոլորի առաջադրանքները (Admin)
+        async function loadAllTasksAdmin() {
+            const response = await fetch(`${API_BASE_URL}/TaskItem/getAllTasksOfAllUsers`);
+            const tasks = await response.json();
+
+            const display = document.getElementById('admin-display-area');
+            display.innerHTML = '<h3 class="font-bold text-indigo-700">Բոլոր օգտատերերի առաջադրանքները:</h3>';
+            renderTasks(tasks, 'admin-display-area'); // Օգտագործում ենք նույն render-ը այլ տեղում
+        }
+
+        // 3. Տեսնել կոնկրետ օգտատիրոջ առաջադրանքները (ըստ ID)
+        async function viewUserTasks(userId) {
+            const response = await fetch(`${API_BASE_URL}/TaskItem/getAllTasksOfUser?userId=${userId}`);
+            const tasks = await response.json();
+            renderTasks(tasks, 'admin-display-area');
+        }
+
+        async function editTask(id, oldTitle, oldDesc, oldDate, currentIsDone, taskUserId) {
+            const newTitle = prompt("Վերնագիր:", oldTitle);
+            if (newTitle === null) return;
+
+            const newDesc = prompt("Նկարագրություն:", oldDesc);
+            if (newDesc === null) return;
+
+            const newDate = prompt("Վերջնաժամկետ (YYYY-MM-DD):", oldDate ? oldDate.split('T')[0] : "");
+            if (newDate === null) return;
+
+            const taskData = {
+                id: id,
+                title: newTitle,
+                description: newDesc,
+                dueDate: newDate,
+                isDone: currentIsDone,
+                userId: taskUserId
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/TaskItem/updateTask?id=${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(taskData)
+                });
+
+                if (response.ok) {
+                    currentUser.isAdmin ? loadAllTasksAdmin() : loadTasks();
+                }
+            } catch (err) {
+                console.error("Update error:", err);
+            }
+        }
+
+        function renderTasks(tasks, containerId = 'task-list') {
+            const list = document.getElementById(containerId);
+            list.innerHTML = '';
+
+            tasks.forEach(task => {
+                const dateDisplay = task.dueDate ? new Date(task.dueDate).toLocaleDateString('hy-AM') : 'Ժամկետ չկա';
+                const isCompleted = task.isDone;
+
+                // Տվյալների նախապատրաստում (որպեսզի չակերտների հետ խնդիր չլինի)
+                const desc = (task.description || '').replace(/'/g, "\\'");
+                const title = (task.title || '').replace(/'/g, "\\'");
+                const date = task.dueDate || '';
+                const tUserId = task.userId; // Պահում ենք UserId-ն
+
+                // --- ԱԴՄԻՆԻ BADGE ---
+                const adminBadge = currentUser.isAdmin
+                    ? `<span class="px-2 py-0.5 bg-purple-100 text-purple-600 text-[10px] rounded-full border border-purple-200 font-semibold">
+                User ID: ${tUserId == 1 ? 'admin' : tUserId}
+               </span>`
+                    : '';
+
+                const card = document.createElement('div');
+                card.className = `task-card bg-white p-5 mb-3 rounded-2xl shadow-sm border-l-4 ${isCompleted ? 'border-green-400 opacity-60' : 'border-blue-500'} flex justify-between items-center`;
+
+                card.innerHTML = `
+            <div class="flex-1">
+                <div class="flex items-center gap-3 mb-1">
+                    <h4 class="font-bold ${isCompleted ? 'line-through text-slate-400' : 'text-slate-800'}">${task.title}</h4>
+                    ${adminBadge} 
+                </div>
+                <p class="text-sm text-slate-500">${task.description || ''}</p>
+                <div class="text-xs text-blue-500 mt-2 font-medium">📅 ${dateDisplay}</div>
+            </div>
+            <div class="flex gap-2 ml-4">
+                <!-- ✔ Կարգավիճակի փոփոխություն -->
+                <button onclick="toggleTask(${task.id}, ${isCompleted}, '${title}', '${desc}', '${date}', ${tUserId})" 
+                        class="p-2.5 bg-slate-50 hover:bg-green-100 text-green-600 rounded-xl transition-all">
+                    ${isCompleted ? '🔙' : '✔'}
+                </button>
+                
+                <!-- 🔄 Խմբագրում -->
+                <button onclick="editTask(${task.id}, '${title}', '${desc}', '${date}', ${isCompleted}, ${tUserId})" 
+                        class="p-2.5 bg-slate-50 hover:bg-blue-100 text-blue-500 rounded-xl transition-all">
+                    🔄
+                </button>
+
+                <!-- 🗑️ Ջնջում -->
+                <button onclick="deleteTask(${task.id})" 
+                        class="p-2.5 bg-slate-50 hover:bg-red-100 text-red-500 rounded-xl transition-all">
+                    🗑️
+                </button>
+            </div>
+        `;
+                list.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="todo-list-api/todo-list-api.csproj" />
+  <Project Path="todo-list.DAL/todo-list.DAL.csproj" Id="d1170a93-4272-4f66-9beb-8c759afab6c2" />
+  <Project Path="todo-list.Services/todo-list.Services.csproj" Id="aef9fd78-90a3-48a9-8e8d-74ff21f38bff" />
+</Solution>
