@@ -51,4 +51,10 @@ public class TaskItemController : ControllerBase
     {
         _taskItemService.DeleteTask(id);
     }
+
+    [HttpPost("searchTaskByContainingTitle")]
+    public List<TaskItemModel> SearchAllTasksContainingTitle([FromBody] string search)
+    {
+        return _taskItemService.SearchAllTasksContainingTitle(search);
+    }
 }

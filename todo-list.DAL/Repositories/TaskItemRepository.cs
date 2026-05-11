@@ -205,4 +205,58 @@ public class TaskItemRepository : ITaskItemRepository
             throw new Exception("User must be logged in");
         }
     }
+
+    public List<TaskItemModel> SearchAllTasksContainingTitle(string search)
+    {
+        var user = _dbContext.Users.FirstOrDefault(x => x.isLogged);
+
+        if(user.isLogged && user.IsAdmin)
+        {
+            var tasks = _dbContext.TaskItems.ToList().Where(t => t.Title.Contains(search));
+
+            var taskModels = new List<TaskItemModel>();
+
+            foreach (var task in tasks)
+            {
+                var taskModel = new TaskItemModel
+                {
+                    Id = task.Id,
+                    Title = task.Title,
+                    Description = task.Description,
+                    DueDate = task.DueDate,
+                    IsDone = task.IsDone,
+                    UserId = task.UserId
+                };
+
+                taskModels.Add(taskModel);
+            }
+            return taskModels;
+        }
+        else if (user.isLogged && user.IsAdmin == false)
+        {
+            var tasks = _dbContext.TaskItems.ToList().Where(t => t.Title.Contains(search) && t.UserId == user.Id);
+
+            var taskModels = new List<TaskItemModel>();
+
+            foreach (var task in tasks)
+            {
+                var taskModel = new TaskItemModel
+                {
+                    Id = task.Id,
+                    Title = task.Title,
+                    Description = task.Description,
+                    DueDate = task.DueDate,
+                    IsDone = task.IsDone,
+                    UserId = task.UserId
+                };
+
+                taskModels.Add(taskModel);
+            }
+            return taskModels;
+        }
+        else
+        {
+            throw new Exception("User must be logged in");
+        }
+    }
 }

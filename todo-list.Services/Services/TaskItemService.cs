@@ -40,4 +40,8 @@ public class TaskItemService : ITaskItemService
     {
         _taskItemRepository.DeleteTask(id);
     }
+    public List<TaskItemModel> SearchAllTasksContainingTitle(string search)
+    {
+        return _taskItemRepository.SearchAllTasksContainingTitle(search);
+    }
 }

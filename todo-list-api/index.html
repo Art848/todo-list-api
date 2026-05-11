@@ -93,6 +93,13 @@
             <div class="flex gap-4 mb-6">
                 <button onclick="loadAllUsers()" class="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition">Տեսնել բոլոր օգտատերերին</button>
                 <button onclick="loadAllTasksAdmin()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition">Տեսնել բոլոր առաջադրանքները</button>
+
+                <div class="relative flex-1">
+                    <input type="text" id="admin-search-input" oninput="handleAdminSearch()"
+                           placeholder="Որոնել բոլորի թասքերում..."
+                           class="w-full px-4 py-2 pl-10 bg-white border border-purple-200 rounded-xl outline-none">
+                    <span class="absolute left-3 top-2.5">🔍</span>
+                </div>
             </div>
             <div id="admin-display-area" class="space-y-4">
                 <!-- Այստեղ կհայտնվեն կամ օգտատերերը, կամ բոլորի task-երը -->
@@ -112,10 +119,24 @@
             </button>
         </div>
 
+
+        <!-- Search Section -->
+        <div class="mb-6 relative">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+            <input type="text" id="search-input" oninput="handleSearch()"
+                   placeholder="Որոնել իմ թասքերը ըստ վերնագրի..."
+                   class="w-full p-4 pl-12 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition">
+        </div>
+
         <!-- Task List Container -->
         <div id="task-list" class="grid gap-4">
             <!-- Dynamic tasks go here -->
         </div>
+
     </div>
 
     <script>
@@ -249,6 +270,66 @@
             }
         }
 
+        async function handleSearch() {
+            const searchText = document.getElementById('search-input').value;
+            const taskListContainer = document.getElementById('task-list');
+
+            if (!searchText.trim()) {
+                loadTasks(); // Վերադարձնում է սովորական ցուցակը
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/TaskItem/searchTaskByContainingTitle`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(searchText)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // Ֆիլտրում ենք, որ օգտատերը տեսնի միայն իրենը
+                    const myTasks = data.filter(t => t.userId === Number(currentUser.id));
+
+                    if (myTasks.length === 0) {
+                        taskListContainer.innerHTML = `<p class="text-center py-10 text-slate-500">Արդյունք չկա:</p>`;
+                    } else {
+                        renderTasks(myTasks, 'task-list');
+                    }
+                }
+            } catch (err) { console.error(err); }
+        }
+
+
+        async function handleAdminSearch() {
+            const searchText = document.getElementById('admin-search-input').value;
+            const adminArea = document.getElementById('admin-display-area');
+
+            if (!searchText.trim()) {
+                loadAllTasksAdmin();
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/TaskItem/searchTaskByContainingTitle`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(searchText)
+                });
+
+                if (response.ok) {
+                    const allFoundTasks = await response.json();
+
+                    if (allFoundTasks.length === 0) {
+                        adminArea.innerHTML = `<p class="text-center py-10 text-purple-500">Բազայում ոչինչ չգտնվեց:</p>`;
+                    } else {
+                        // Նկարում ենք բոլոր գտնված թասքերը ադմինի տիրույթում
+                        renderTasks(allFoundTasks, 'admin-display-area');
+                    }
+                }
+            } catch (err) { console.error(err); }
+        }
+
         async function addTask() {
             const title = document.getElementById('task-title').value;
             const desc = document.getElementById('task-desc').value;
@@ -362,6 +443,11 @@
             document.getElementById('task-list').innerHTML = '';
             if (document.getElementById('admin-display-area')) {
                 document.getElementById('admin-display-area').innerHTML = '';
+            }
+
+            document.getElementById('search-input').value = '';
+            if (document.getElementById('admin-search-input')) {
+                document.getElementById('admin-search-input').value = '';
             }
         }
 

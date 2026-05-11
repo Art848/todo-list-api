@@ -11,4 +11,5 @@ public interface ITaskItemRepository
     TaskItemModel GetTaskById(int taskId);
     void UpdateTask(int id, TaskItemModel updatedTask);
     void DeleteTask(int id);
+    List<TaskItemModel> SearchAllTasksContainingTitle(string search);
 }
