@@ -22,20 +22,4 @@ public class ApplicationDBContext : DbContext
     {
         optionsBuilder.UseSqlServer(@"Server=(localdb)\MSSQLLocalDB;Database=todo-list");
     }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
-
-        modelBuilder.Entity<User>().HasData(new User
-        {
-            Id = 1,
-            Username = "admin",
-            Email = "admin@mail.com",
-            Password = "admin123",
-            isLogged = false,
-            IsAdmin = true,
-            RegisteredDate = new DateTime(2024, 1, 1),
-        });
-    }
 }

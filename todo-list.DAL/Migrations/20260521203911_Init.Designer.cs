@@ -12,7 +12,7 @@ using todo_list.DAL;
 namespace todo_list.DAL.Migrations
 {
     [DbContext(typeof(ApplicationDBContext))]
-    [Migration("20260504185717_Init")]
+    [Migration("20260521203911_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -75,7 +75,8 @@ namespace todo_list.DAL.Migrations
 
                     b.Property<string>("Password")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("RegisteredDate")
                         .HasColumnType("datetime2");
@@ -90,18 +91,6 @@ namespace todo_list.DAL.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Email = "admin@mail.com",
-                            IsAdmin = true,
-                            Password = "admin123",
-                            RegisteredDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Username = "admin",
-                            isLogged = false
-                        });
                 });
 #pragma warning restore 612, 618
         }

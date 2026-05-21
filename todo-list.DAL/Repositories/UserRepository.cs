@@ -1,4 +1,5 @@
-﻿using todo_list.DAL.DTO;
+﻿using BCrypt.Net;
+using todo_list.DAL.DTO;
 using todo_list.DAL.Entities;
 using todo_list.DAL.Interfaces;
 using todo_list.DAL.Models;
@@ -29,7 +30,7 @@ public class UserRepository : IUserRepository
         var user = new User
         {
             Username = userDto.Username,
-            Password = userDto.Password,
+            Password = BCrypt.Net.BCrypt.HashPassword(userDto.Password),
             Email = userDto.Email,
             isLogged = false,
             IsAdmin = false,
@@ -80,8 +81,19 @@ public class UserRepository : IUserRepository
             foreach (var user in users)
             {
 
-                if (user.Username == loginDto.Username && user.Password == loginDto.Password)
+                Console.WriteLine(BCrypt.Net.BCrypt.HashPassword("admin123"));
+                Console.WriteLine(user.Username);
+                Console.WriteLine(loginDto.Password);
+
+                bool isValid = BCrypt.Net.BCrypt.Verify(
+                    loginDto.Password,
+                    user.Password
+                );
+                Console.WriteLine(isValid);
+
+                if (user.Username == loginDto.Username && isValid)
                 {
+
                     var userToChange = _dbContext.Users.FirstOrDefault(x => x.Username == loginDto.Username);
                     Console.WriteLine(userToChange.ToString());
 

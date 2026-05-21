@@ -12,6 +12,7 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddSwaggerGen();
 
+
 builder.Services.AddDbContext<ApplicationDBContext>();
 builder.Services.AddTransient<IUserRepository, UserRepository>();
 builder.Services.AddTransient<IUserService, UserService>();
@@ -25,10 +26,13 @@ builder.Services.AddCors(options => {
 
 var app = builder.Build();
 
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+await DbSeeder.SeedAdminAsync(app.Services);
 
 app.UseHttpsRedirection();
 

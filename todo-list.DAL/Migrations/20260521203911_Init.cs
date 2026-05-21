@@ -37,7 +37,7 @@ namespace todo_list.DAL.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Username = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Password = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Password = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     isLogged = table.Column<bool>(type: "bit", nullable: false),
                     IsAdmin = table.Column<bool>(type: "bit", nullable: false),
                     RegisteredDate = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -46,11 +46,6 @@ namespace todo_list.DAL.Migrations
                 {
                     table.PrimaryKey("PK_Users", x => x.Id);
                 });
-
-            migrationBuilder.InsertData(
-                table: "Users",
-                columns: new[] { "Id", "Email", "IsAdmin", "Password", "RegisteredDate", "Username", "isLogged" },
-                values: new object[] { 1, "admin@mail.com", true, "admin123", new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "admin", false });
         }
 
         /// <inheritdoc />
