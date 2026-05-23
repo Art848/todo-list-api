@@ -7,7 +7,5 @@ public interface IUserService
 {
     void userRegistration(UserDTO userDto);
     List<UserModel> getAllUsers();
-    bool userLogin(LoginDTO loginDto);
-    UserModel getUserById(int id);
-    bool userLogout(LoginDTO loginDto);
+    string userLogin(LoginDTO loginDto);
 }

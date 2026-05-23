@@ -1,4 +1,8 @@
 ﻿using BCrypt.Net;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using todo_list.DAL.DTO;
 using todo_list.DAL.Entities;
 using todo_list.DAL.Interfaces;
@@ -8,7 +12,8 @@ namespace todo_list.DAL.Repositories;
 
 public class UserRepository : IUserRepository
 {
-    private ApplicationDBContext _dbContext;
+    private readonly ApplicationDBContext _dbContext;
+    private readonly string _jwtSecret = "YOUR_SUPER_SECRET_KEY_THAT_IS_LONG_ENOUGH_32_BYTES";
 
     public UserRepository(ApplicationDBContext dbContext)
     {
@@ -17,14 +22,10 @@ public class UserRepository : IUserRepository
 
     public void userRegistration(UserDTO userDto)
     {
-        var users = _dbContext.Users.ToList();
-
-        foreach (var item in users)
+        bool userExists = _dbContext.Users.Any(u => u.Username == userDto.Username);
+        if (userExists)
         {
-            if (item.Username == userDto.Username)
-            {
-                throw new Exception("User with this username already exist");
-            }
+            throw new Exception("User with this username already exists");
         }
 
         var user = new User
@@ -32,7 +33,6 @@ public class UserRepository : IUserRepository
             Username = userDto.Username,
             Password = BCrypt.Net.BCrypt.HashPassword(userDto.Password),
             Email = userDto.Email,
-            isLogged = false,
             IsAdmin = false,
             RegisteredDate = DateTime.Now,
         };
@@ -41,12 +41,51 @@ public class UserRepository : IUserRepository
         _dbContext.SaveChanges();
     }
 
+    public string userLogin(LoginDTO loginDto)
+    {
+        // Optimized: Find the specific user directly in the database
+        var user = _dbContext.Users.FirstOrDefault(u => u.Username == loginDto.Username);
+
+        if (user == null)
+        {
+            throw new Exception("Invalid username or password");
+        }
+
+        // Verify the password using BCrypt
+        bool isValidPassword = BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password);
+
+        if (!isValidPassword)
+        {
+            throw new Exception("Invalid username or password");
+        }
+
+        // Credentials are good! Generate and return the JWT token
+        return GenerateJwtToken(user);
+    }
+
+    private string GenerateJwtToken(User user)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.ASCII.GetBytes(_jwtSecret);
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User") // Automatically passes roles to your system
+            }),
+            Expires = DateTime.UtcNow.AddDays(7), // Token valid for 7 days
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        return tokenHandler.WriteToken(token);
+    }
+
     public List<UserModel> getAllUsers()
     {
-        var admin = _dbContext.Users.FirstOrDefault(u => u.IsAdmin);
-
-        if (admin.isLogged && admin.IsAdmin)
-        {
             var users = _dbContext.Users.Where(u => u.IsAdmin == false).ToList();
 
             var usermodels = new List<UserModel>();
@@ -55,7 +94,7 @@ public class UserRepository : IUserRepository
             {
                 var usermodel = new UserModel
                 {
-                    Id  = user.Id,
+                    Id = user.Id,
                     Username = user.Username,
                     Email = user.Email
                 };
@@ -64,108 +103,5 @@ public class UserRepository : IUserRepository
             }
 
             return usermodels;
-        }
-        else
-        {
-            throw new Exception("User must be logged in with ADMIN role");
-        }
-    }
-
-    public bool userLogin(LoginDTO loginDto)
-    {
-        var loggedUser = _dbContext.Users.FirstOrDefault(u => u.isLogged);
-        if (loggedUser == null)
-        {
-            var users = _dbContext.Users.ToList();
-
-            foreach (var user in users)
-            {
-
-                Console.WriteLine(BCrypt.Net.BCrypt.HashPassword("admin123"));
-                Console.WriteLine(user.Username);
-                Console.WriteLine(loginDto.Password);
-
-                bool isValid = BCrypt.Net.BCrypt.Verify(
-                    loginDto.Password,
-                    user.Password
-                );
-                Console.WriteLine(isValid);
-
-                if (user.Username == loginDto.Username && isValid)
-                {
-
-                    var userToChange = _dbContext.Users.FirstOrDefault(x => x.Username == loginDto.Username);
-                    Console.WriteLine(userToChange.ToString());
-
-                    userToChange.isLogged = true;
-                    _dbContext.SaveChanges();
-                    return true;
-                }
-                else
-                {
-                    continue;
-                }
-            }
-
-            return false;
-        }
-        else
-        {
-            throw new Exception("We have already logged user");
-        }
-    }
-
-    public bool userLogout(LoginDTO loginDto)
-    {
-        var users = _dbContext.Users.ToList();
-
-        foreach (var user in users)
-        {
-            if (user.Username == loginDto.Username)
-            {
-                var userToChange = _dbContext.Users.FirstOrDefault(x => x.Username == loginDto.Username);
-
-                if (userToChange.isLogged)
-                {
-                    userToChange.isLogged = false;
-                    _dbContext.SaveChanges();
-                    return false;
-                }
-            }
-            else
-            {
-                continue;
-            }
-        }
-
-        return false;
-    }
-
-
-    public UserModel getUserById(int id)
-    {
-        var user = _dbContext.Users.FirstOrDefault(x => x.isLogged);
-
-        if (user.isLogged && user.IsAdmin)
-        {
-            var userToGet = _dbContext.Users.FirstOrDefault(x => x.Id == id);
-            if (userToGet.Id == 1)
-            {
-                throw new Exception("Something wrong!!! Admin want to get himself");
-            }
-
-            var usermodel = new UserModel
-            {
-                Username = userToGet?.Username,
-                Email = userToGet?.Email
-            };
-
-            return usermodel;
-        }
-        else
-        {
-            throw new Exception("User must be logged in with ADMIN role");
-        }
-
     }
 }

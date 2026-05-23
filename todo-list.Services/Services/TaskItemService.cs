@@ -14,23 +14,18 @@ public class TaskItemService : ITaskItemService
         _taskItemRepository = taskItemRepository;
     }
 
-    public void CreateTask(TaskItemDTO dto)
+    public void CreateTask(TaskItemDTO dto, int userId)
     {
-        _taskItemRepository.CreateTask(dto);
+        _taskItemRepository.CreateTask(dto, userId);
     }
-    public List<TaskItemModel> GetAllTasksOfUser()
+    public List<TaskItemModel> GetAllTasksOfUser(int userId)
     {
-        return _taskItemRepository.GetAllTasksOfUser();
+        return _taskItemRepository.GetAllTasksOfUser(userId);
     }
 
     public List<TaskItemModel> GetAllTasksOfAllUsers()
     {
         return _taskItemRepository.GetAllTasksOfAllUsers();
-    }
-
-    public TaskItemModel GetTaskById(int taskId)
-    {
-        return _taskItemRepository.GetTaskById(taskId);
     }
     public void UpdateTask(int id, TaskItemModel updatedTask)
     {

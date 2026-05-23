@@ -14,12 +14,8 @@ public class TaskItemRepository : ITaskItemRepository
         _dbContext = dbContext;
     }
 
-    public void CreateTask(TaskItemDTO dto)
+    public void CreateTask(TaskItemDTO dto, int userId)
     {
-        var user = _dbContext.Users.FirstOrDefault(x => x.isLogged);
-
-        if (user.isLogged)
-        {
             var task = new TaskItem
             {
                 Title = dto.Title,
@@ -27,23 +23,18 @@ public class TaskItemRepository : ITaskItemRepository
                 DueDate = dto.DueDate >= DateTime.Today ? dto.DueDate : throw new Exception("DateTime must be future"),
                 IsDone = false,
                 CreatedAt = DateTime.UtcNow,
-                UserId = user.Id
+                UserId = userId
             };
 
             _dbContext.TaskItems.Add(task);
             _dbContext.SaveChanges();
-        }
-        else
-        {
-            throw new Exception("User must be logged in");
-        }
     }
 
     public List<TaskItemModel> GetAllTasksOfAllUsers()
     {
-        var user = _dbContext.Users.FirstOrDefault(x => x.isLogged);
+        var user = _dbContext.Users.FirstOrDefault(x => x.IsAdmin);
 
-        if (user.isLogged && user.IsAdmin)
+        if (user.IsAdmin)
         {
             var tasks = _dbContext.TaskItems.ToList();
 
@@ -72,69 +63,32 @@ public class TaskItemRepository : ITaskItemRepository
         }
     }
 
-    public List<TaskItemModel> GetAllTasksOfUser()
+    public List<TaskItemModel> GetAllTasksOfUser(int userId)
     {
-        var user = _dbContext.Users.FirstOrDefault(x => x.isLogged);
+        var tasks = _dbContext.TaskItems.Where(t => t.UserId == userId).ToList();
 
-        if (user.isLogged)
+        var taskModels = new List<TaskItemModel>();
+
+        foreach (var task in tasks)
         {
-            var tasks = _dbContext.TaskItems.ToList().Where(t => t.UserId == user.Id);
-
-            var taskModels = new List<TaskItemModel>();
-
-            foreach (var task in tasks)
-            {
-                var taskModel = new TaskItemModel
-                {
-                    Id = task.Id,
-                    Title = task.Title,
-                    Description = task.Description,
-                    DueDate = task.DueDate,
-                    IsDone = task.IsDone,
-                    UserId = task.UserId
-                };
-
-                taskModels.Add(taskModel);
-            }
-
-            return taskModels;
-        }
-        else
-        {
-            throw new Exception("User must be logged in");
-        }
-    }
-
-    public TaskItemModel GetTaskById(int taskId)
-    {
-        var user = _dbContext.Users.FirstOrDefault(x => x.isLogged);
-
-        if (user.isLogged)
-        {
-            var task = _dbContext.TaskItems.FirstOrDefault(t => t.UserId == user.Id && t.Id == taskId);
-
             var taskModel = new TaskItemModel
             {
+                Id = task.Id,
                 Title = task.Title,
                 Description = task.Description,
                 DueDate = task.DueDate,
                 IsDone = task.IsDone,
+                UserId = task.UserId
             };
 
-            return taskModel;
+            taskModels.Add(taskModel);
         }
-        else
-        {
-            throw new Exception("User must be logged in");
-        }
+
+        return taskModels;
     }
 
     public void UpdateTask(int id, TaskItemModel updatedTask)
     {
-        var user = _dbContext.Users.FirstOrDefault(x => x.isLogged);
-
-        if (user.isLogged && user.IsAdmin)
-        {
             var task = _dbContext.TaskItems.FirstOrDefault(t => t.Id == id);
             if (task == null)
             {
@@ -148,37 +102,11 @@ public class TaskItemRepository : ITaskItemRepository
 
             _dbContext.TaskItems.Update(task);
             _dbContext.SaveChanges();
-        }
-        else if (user.isLogged && user.IsAdmin == false)
-        {
-            var task = _dbContext.TaskItems.FirstOrDefault(t => t.Id == id && t.UserId == user.Id);
-            if (task == null)
-            {
-                throw new Exception("This task does not exist for this user");
-            }
-
-            task.Title = updatedTask.Title;
-            task.Description = updatedTask.Description;
-            task.DueDate = updatedTask.DueDate >= DateTime.Today ? updatedTask.DueDate : throw new Exception("DateTime must be future");
-            task.IsDone = updatedTask.IsDone;
-
-            _dbContext.TaskItems.Update(task);
-            _dbContext.SaveChanges();
-        }
-        else
-        {
-            throw new Exception("User must be logged in");
-        }
     }
 
     public void DeleteTask(int id)
     {
-        var user = _dbContext.Users.FirstOrDefault(x => x.isLogged);
-
-        if (user.isLogged && user.IsAdmin)
-        {
             var task = _dbContext.TaskItems.FirstOrDefault(x => x.Id == id);
-            Console.WriteLine(task.Id);
 
             if (task == null)
             {
@@ -187,34 +115,13 @@ public class TaskItemRepository : ITaskItemRepository
 
             _dbContext.TaskItems.Remove(task);
             _dbContext.SaveChanges();
-        }
-        else if (user.isLogged && user.IsAdmin == false)
-        {
-            var task = _dbContext.TaskItems.FirstOrDefault(x => x.Id == id && x.UserId == user.Id);
-
-            if (task == null)
-            {
-                throw new Exception("This task does not exist for this user");
-            }
-
-            _dbContext.TaskItems.Remove(task);
-            _dbContext.SaveChanges();
-        }
-        else
-        {
-            throw new Exception("User must be logged in");
-        }
     }
 
     public List<TaskItemModel> SearchAllTasksContainingTitle(string search)
     {
-        var user = _dbContext.Users.FirstOrDefault(x => x.isLogged);
+        var tasks = _dbContext.TaskItems.Where(t => t.Title.Contains(search)).ToList();
 
-        if(user.isLogged && user.IsAdmin)
-        {
-            var tasks = _dbContext.TaskItems.ToList().Where(t => t.Title.Contains(search));
-
-            var taskModels = new List<TaskItemModel>();
+        var taskModels = new List<TaskItemModel>();
 
             foreach (var task in tasks)
             {
@@ -231,32 +138,5 @@ public class TaskItemRepository : ITaskItemRepository
                 taskModels.Add(taskModel);
             }
             return taskModels;
-        }
-        else if (user.isLogged && user.IsAdmin == false)
-        {
-            var tasks = _dbContext.TaskItems.ToList().Where(t => t.Title.Contains(search) && t.UserId == user.Id);
-
-            var taskModels = new List<TaskItemModel>();
-
-            foreach (var task in tasks)
-            {
-                var taskModel = new TaskItemModel
-                {
-                    Id = task.Id,
-                    Title = task.Title,
-                    Description = task.Description,
-                    DueDate = task.DueDate,
-                    IsDone = task.IsDone,
-                    UserId = task.UserId
-                };
-
-                taskModels.Add(taskModel);
-            }
-            return taskModels;
-        }
-        else
-        {
-            throw new Exception("User must be logged in");
-        }
     }
 }

@@ -29,21 +29,17 @@ public class UserController : ControllerBase
     }
 
     [HttpPost("userLogin")]
-    public bool userLogin(LoginDTO loginDto)
+    public IActionResult Login([FromBody] LoginDTO loginDto)
     {
-        return _userService.userLogin(loginDto);
-    }
+        try
+        {
+            string token = _userService.userLogin(loginDto);
 
-
-    [HttpPost("userLogout")]
-    public bool userLogout(LoginDTO loginDto)
-    {
-        return _userService.userLogout(loginDto);
-    }
-
-    [HttpGet("getUserById")]
-    public UserModel getUserById(int id)
-    {
-        return _userService.getUserById(id);
+            return Ok(new { token = token });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

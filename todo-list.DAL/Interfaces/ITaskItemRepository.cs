@@ -5,10 +5,9 @@ namespace todo_list.DAL.Interfaces;
 
 public interface ITaskItemRepository
 {
-    void CreateTask(TaskItemDTO dto);
-    List<TaskItemModel> GetAllTasksOfUser();
+    void CreateTask(TaskItemDTO dto, int userId);
+    List<TaskItemModel> GetAllTasksOfUser(int userId);
     List<TaskItemModel> GetAllTasksOfAllUsers();
-    TaskItemModel GetTaskById(int taskId);
     void UpdateTask(int id, TaskItemModel updatedTask);
     void DeleteTask(int id);
     List<TaskItemModel> SearchAllTasksContainingTitle(string search);

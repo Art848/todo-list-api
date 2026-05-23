@@ -203,71 +203,91 @@
                     body: JSON.stringify({ username: user, password: pass })
                 });
 
-                // Ենթադրենք սերվերը վերադարձնում է կամ օգտատիրոջ օբյեկտը, կամ true/false
+                // Եթե սերվերը վերադարձրել է սխալ ստատուս (օրինակ՝ 400 BadRequest կամ 401 Unauthorized)
+                if (!response.ok) {
+                    alert("Մուտքը մերժված է. սխալ տվյալներ");
+                    return;
+                }
+
+                // Ստանում ենք սերվերի ուղարկած JSON-ը ({ token: "eyJhbG..." })
                 const data = await response.json();
                 console.log("Server response:", data);
 
-                if (data === true || (typeof data === 'object' && data !== null)) {
-                    // 1. Տվյալների պահպանում
-                    currentUser.name = user;
-                    currentUser.isAdmin = (user.toLowerCase() === 'admin');
+                if (data && data.token) {
+                    // 1. Պահպանում ենք թոքենը բրաուզերի հիշողությունում (localStorage)
+                    localStorage.setItem('jwtToken', data.token);
 
-                    // ՈՒՇԱԴՐՈՒԹՅՈՒՆ: Եթե սերվերը ID չի տալիս, սա ժամանակավոր լուծում է
-                    // Իրականում պետք է լինի currentUser.id = data.id;
-                    if (typeof data === 'object' && data.id) {
-                        currentUser.id = data.id;
-                    } else {
-                        currentUser.id = currentUser.isAdmin ? 1 : 2; // Փորձնական ID-ներ
+                    // 2. Դեկոդավորում ենք JWT թոքենի payload-ը՝ տվյալները կարդալու համար
+                    try {
+                        const tokenParts = data.token.split('.');
+                        const payloadBase64 = tokenParts[1];
+
+                        // window.atob-ով բացում ենք Base64 տեքստը (ներառյալ հատուկ սիմվոլների ուղղումը)
+                        const decodedPayload = window.atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+                        const tokenPayload = JSON.parse(decodedPayload);
+                        console.log("Decoded Token Payload:", tokenPayload);
+
+                        // .NET-ի ClaimTypes-ները կարող են լինել երկար URL-ներով կամ կարճ անուններով՝ կախված սերվերի նախագծումից
+                        const userId = tokenPayload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || tokenPayload.nameid || tokenPayload.sub;
+                        const userName = tokenPayload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || tokenPayload.unique_name;
+                        const userRole = tokenPayload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || tokenPayload.role;
+
+                        // 3. Պահում ենք ստացված 1003-ը լոկալ սթորիջում
+                        if (userId) {
+                            localStorage.setItem('userId', userId);
+                            console.log("UserId-ն հաջողությամբ պահվեց localStorage-ում:", userId);
+                        }
+
+                        // 4. Լրացնում ենք currentUser-ը սերվերի տված իրական տվյալներով
+                        currentUser.id = userId;
+                        currentUser.name = userName || "Օգտատեր";
+                        currentUser.isAdmin = (userRole === 'Admin');
+
+                    } catch (decodeError) {
+                        console.error("Թոքենից տվյալները հանելու սխալ:", decodeError);
+                        alert("Մուտքի սխալ՝ թոքենի վավերացման խնդիր:");
+                        return;
                     }
 
-                    // 2. UI-ի փոփոխություն
+                    // 5. UI-ի փոփոխություն (Թաղցնում ենք լոգինի էջը, բացում ենք հավելվածը)
                     document.getElementById('auth-section').classList.add('hidden');
                     document.getElementById('app-section').classList.remove('hidden');
-                    document.getElementById('display-user').innerText = user;
+                    document.getElementById('display-user').innerText = currentUser.name;
 
-                    // 3. Ադմինի դաշտի ցուցադրում
+                    // 6. Ադմինի դաշտերի ցուցադրում և գործերի բեռնում
                     const adminControls = document.getElementById('admin-controls');
                     if (currentUser.isAdmin) {
-                        adminControls.classList.remove('hidden');
-                        loadAllTasksAdmin(); // Բեռնում ենք բոլորի գործերը
+                        if (adminControls) adminControls.classList.remove('hidden');
+                        loadAllTasksAdmin(); // Բեռնում ենք բոլոր օգտատերերի գործերը
                     } else {
-                        adminControls.classList.add('hidden');
-                        loadTasks(); // Բեռնում ենք միայն իր գործերը
+                        if (adminControls) adminControls.classList.add('hidden');
+                        loadTasks(); // Բեռնում ենք միայն տվյալ օգտատիրոջ գործերը
                     }
                 } else {
-                    alert("Մուտքը մերժված է. սխալ տվյալներ");
+                    alert("Մուտքը մերժված է. թոքենը չի գտնվել սերվերի պատասխանի մեջ");
                 }
             } catch (err) {
-                console.error("Login error:", err);
-                alert("Սերվերի հետ կապի սխալ:");
+                console.error("Մանրամասն սխալը:", err);
+                alert("Սերվերի հետ կապի սխալ: " + err.message);
             }
         }
 
-        async function handleLogout() {
-            try {
-                // Քո Controller-ում սպասվում է LoginDTO:
-                // Եթե սերվերն այն պարտադիր չի պահանջում logout-ի համար, կարող ես դատարկ ուղարկել:
-                const logoutData = {
-                    username: currentUser.name,
-                    password: ""
-                };
+        function handleLogout() {
+            // 1. Ջնջում ենք թոքենը և օգտատիրոջ տվյալները լոկալ սթորիջից
+            localStorage.removeItem('jwtToken');
+            localStorage.removeItem('currentUser'); // Եթե պահում ես օգտատիրոջ տվյալները
 
-                // Կանչում ենք սերվերի logout endpoint-ը
-                const response = await fetch(`${API_BASE_URL}/User/userLogout`, {
-                    method: 'POST', // Չնայած քո կոդում [HttpGet] է, բայց եթե փոխել ես POST-ի, այստեղ նույնպես փոխիր
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(logoutData)
-                });
+            // 2. Մաքրում ենք ընթացիկ փոփոխականները հիշողությունից
+            currentUser = null;
 
-                if (response.ok) {
-                    console.log("Logged out from server");
-                }
-            } catch (err) {
-                console.error("Logout error:", err);
-            } finally {
-                // Անկախ API-ի պատասխանից, մաքրում ենք UI-ն
-                resetUI();
-            }
+            console.log("Օգտատերը դուրս եկավ համակարգից:");
+
+            // 3. Թարմացնում ենք էջը կամ UI-ն, որպեսզի բացվի Login-ի պատուհանը
+            // Տարբերակ Ա: Պարզապես թարմացնել էջը (ամենահեշտ և մաքուր տարբերակը)
+            window.location.reload();
+
+            // Տարբերակ Բ: Եթե ունես հատուկ ֆունկցիա UI-ն փոխելու համար (օրինակ՝ showLoginAndHideDashboard)
+            // checkAuthStatus(); 
         }
 
         async function handleSearch() {
@@ -275,14 +295,19 @@
             const taskListContainer = document.getElementById('task-list');
 
             if (!searchText.trim()) {
-                loadTasks(); // Վերադարձնում է սովորական ցուցակը
+                loadTasks();
                 return;
             }
+
+            const token = localStorage.getItem('jwtToken'); // 🔴 Վերցնում ենք թոքենը
 
             try {
                 const response = await fetch(`${API_BASE_URL}/TaskItem/searchTaskByContainingTitle`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` // 🔴 ԱՎԵԼԱՑՎԱԾ Է
+                    },
                     body: JSON.stringify(searchText)
                 });
 
@@ -296,10 +321,11 @@
                     } else {
                         renderTasks(myTasks, 'task-list');
                     }
+                } else if (response.status === 401) {
+                    alert("Ձեր սեսիան ավարտվել է, խնդրում ենք նորից մուտք գործել:");
                 }
             } catch (err) { console.error(err); }
         }
-
 
         async function handleAdminSearch() {
             const searchText = document.getElementById('admin-search-input').value;
@@ -310,10 +336,15 @@
                 return;
             }
 
+            const token = localStorage.getItem('jwtToken'); // 🔴 Վերցնում ենք թոքենը
+
             try {
                 const response = await fetch(`${API_BASE_URL}/TaskItem/searchTaskByContainingTitle`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` // 🔴 ԱՎԵԼԱՑՎԱԾ Է
+                    },
                     body: JSON.stringify(searchText)
                 });
 
@@ -323,103 +354,155 @@
                     if (allFoundTasks.length === 0) {
                         adminArea.innerHTML = `<p class="text-center py-10 text-purple-500">Բազայում ոչինչ չգտնվեց:</p>`;
                     } else {
-                        // Նկարում ենք բոլոր գտնված թասքերը ադմինի տիրույթում
                         renderTasks(allFoundTasks, 'admin-display-area');
                     }
+                } else if (response.status === 401) {
+                    alert("Ձեր սեսիան ավարտվել է, խնդրում ենք նորից մուտք գործել:");
                 }
             } catch (err) { console.error(err); }
         }
 
-        async function addTask() {
-            const title = document.getElementById('task-title').value;
-            const desc = document.getElementById('task-desc').value;
-            const dueDate = document.getElementById('task-duedate').value; // Ստանում ենք արժեքը
+        async function addTask() { // Պարամետրերը հանեցինք, արժեքները կվերցնենք ներսում
+            // 1. Վերցնում ենք տեքստերը input-ներից (ստուգիր, որ ID-ները ճիշտ լինեն)
+            const titleInput = document.getElementById('task-title');
+            const descInput = document.getElementById('task-desc');
+            const dueDateInput = document.getElementById('task-duedate');
 
-            if (!title) {
-                alert("Խնդրում ենք լրացնել վերնագիրը");
+            // Ստուգում ենք՝ արդյոք այս element-ները գոյություն ունեն էջում
+            if (!titleInput || !dueDateInput) {
+                console.error("HTML-ում input-ների ID-ները սխալ են դրված:");
                 return;
             }
 
-            const newTask = {
-                title: title,
-                description: desc, // Համոզվեք, որ Backend-ում սա Description է կոչվում
-                dueDate: dueDate,   // Ուղարկում ենք ISO ձևաչափով (YYYY-MM-DD)
-                isDone: false,
-                userId: currentUser.id
-            };
+            const title = titleInput.value.trim();
+            const description = descInput ? descInput.value.trim() : "";
+            const dueDate = dueDateInput.value;
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/TaskItem/createTask`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newTask)
-                });
-
-                if (response.ok) {
-                    // Մաքրում ենք դաշտերը
-                    document.getElementById('task-title').value = '';
-                    document.getElementById('task-desc').value = '';
-                    document.getElementById('task-duedate').value = '';
-                    loadTasks(); // Վերաբեռնում ենք ցուցակը
-                }
-            } catch (err) {
-                console.error("Error adding task:", err);
+            // 2. Ֆրոնտենդ ստուգում՝ դատարկ չուղարկելու համար
+            if (!title || !dueDate) {
+                alert("Վերնագիրը և Վերջնաժամկետը պարտադիր են։");
+                return;
             }
-        }
 
-        async function toggleTask(id, currentStatus, title, description, dueDate, taskUserId) {
+            const token = localStorage.getItem('jwtToken');
+            if (!token) {
+                alert("Խնդրում ենք նախ մուտք գործել համակարգ:");
+                return;
+            }
+
+            // 3. Ստեղծում ենք օբյեկտը (անունները պետք է համընկնեն C# DTO-ի հետ)
             const taskData = {
-                id: id,
                 title: title,
                 description: description,
-                dueDate: dueDate,
-                isDone: !currentStatus,
-                userId: taskUserId // Կարևոր է ուղարկել հենց այս Task-ի UserId-ն
+                dueDate: dueDate
             };
 
             try {
-                const response = await fetch(`${API_BASE_URL}/TaskItem/updateTask?id=${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                const userId = localStorage.getItem('userId'); // Վերցնում ենք 1003-ը
+
+                const response = await fetch(`${API_BASE_URL}/TaskItem/createTask?userId=${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify(taskData)
                 });
 
                 if (response.ok) {
+                    alert("Թասքը հաջողությամբ ստեղծվեց:");
+
+                    // Մաքրում ենք դաշտերը
+                    titleInput.value = '';
+                    if (descInput) descInput.value = '';
+                    dueDateInput.value = '';
+
+                    loadTasks();
+                } else {
+                    const errorResult = await response.json();
+                    console.error("Սերվերի վալիդացիայի սխալ:", errorResult);
+                    alert("Չհաջողվեց ստեղծել թասքը: Ստուգեք տվյալները:");
+                }
+            } catch (error) {
+                console.error("Ցանցային սխալ:", error);
+            }
+        }
+
+        // Ֆունկցիային ID-ից բացի փոխանցում ենք նաև ընթացիկ վերնագիրն ու նկարագրությունը
+        // 1. Ավելացնում ենք dueDate պարամետրը ֆունկցիայի մեջ
+        // Ավելացրեցինք taskUserId պարամետրը
+        async function toggleTask(taskId, isDone, title, description, dueDate, taskUserId) {
+            const token = localStorage.getItem('jwtToken'); // Ուղղված բանալին
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/TaskItem/updateTask?id=${taskId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        id: taskId,
+                        title: title,
+                        description: description,
+                        dueDate: dueDate,
+                        isDone: !isDone, // Շրջում ենք կարգավիճակը (true -> false կամ false -> true)
+                        userId: taskUserId // Ուղարկում ենք օգտատիրոջ ID-ն, որպեսզի բեքենդը վալիդացիան անցկացնի
+                    })
+                });
+
+                if (response.ok) {
+                    console.log("Հաջողությամբ թարմացվեց");
+                    // Ստուգում ենք՝ ով է թարմացրել, որպեսզի ճիշտ ցուցակը վերաբեռնենք
                     currentUser.isAdmin ? loadAllTasksAdmin() : loadTasks();
                 } else {
-                    const err = await response.text();
-                    console.error("Update failed:", err);
+                    alert("Չհաջողվեց թարմացնել կարգավիճակը:");
                 }
-            } catch (err) {
-                console.error("Fetch error:", err);
+            } catch (error) {
+                console.error(error);
             }
         }
 
         // 2. Առաջադրանքի ջնջում
-        async function deleteTask(id) {
-            if (!confirm("Վստա՞հ եք:")) return;
+        async function deleteTask(taskId) {
+            // Հաստատման պատուհան, որպեսզի օգտատերը պատահական չջնջի
+            if (!confirm("Վստա՞հ եք, որ ցանկանում եք ջնջել այս առաջադրանքը:")) {
+                return;
+            }
 
-            // Տպում ենք կոնսոլում՝ ստուգելու համար
-            console.log("Current User Object:", currentUser);
-            console.log("Attempting to delete Task ID:", id);
-            console.log("Using User ID:", currentUser.id);
+            // Վերցնում ենք ճիշտ բանալիով թոքենը (ինչպես նախորդ քայլում ուղղեցինք)
+            const token = localStorage.getItem('jwtToken');
+            if (!token) {
+                alert("Նախ մուտք գործեք համակարգ:");
+                return;
+            }
 
             try {
-                // Համոզվեք, որ currentUser.id-ն գոյություն ունի, թե չէ ուղարկեք 0
-                const uId = currentUser.id || 0;
-
-                const response = await fetch(`${API_BASE_URL}/TaskItem/deleteTask?id=${id}`, {
-                    method: 'DELETE'
+                // Ուղարկում ենք DELETE հարցում՝ id-ն փոխանցելով որպես Query String (?id=...)
+                const response = await fetch(`${API_BASE_URL}/TaskItem/deleteTask?id=${taskId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}` // Ապահովում ենք վավերացումը
+                    }
                 });
 
                 if (response.ok) {
-                    currentUser.isAdmin ? loadAllTasksAdmin() : loadTasks();
+                    console.log("Առաջադրանքը հաջողությամբ ջնջվեց");
+
+                    // Թարմացնում ենք էկրանի ցուցակը՝ կախված օգտատիրոջ դերից
+                    if (currentUser && currentUser.isAdmin) {
+                        loadAllTasksAdmin();
+                    } else {
+                        loadTasks();
+                    }
                 } else {
-                    const errText = await response.text();
-                    alert("Սերվերի պատասխանը: " + errText);
+                    // Եթե բեքենդը սխալ վերադարձնի (օրինակ՝ task-ը չգտնվի)
+                    alert("Չհաջողվեց ջնջել առաջադրանքը։");
                 }
-            } catch (err) {
-                console.error("Fetch Error:", err);
+            } catch (error) {
+                console.error("Ջնջման սխալ:", error);
+                alert("Տեղի է ունեցել սխալ սերվերի հետ կապվելիս։");
             }
         }
 
@@ -451,31 +534,33 @@
             }
         }
 
-        function afterLogin(data) {
-            currentUser.id = data.id;
-            currentUser.username = data.username;
-            currentUser.isAdmin = data.isAdmin;
-
-            document.getElementById('auth-section').classList.add('hidden');
-            document.getElementById('app-section').classList.remove('hidden');
-
-            // ԿԱՐԵՎՈՐ ՇՏԿՈՒՄԸ ԱՅՍՏԵՂ Է
-            if (currentUser.isAdmin) {
-                loadAllTasksAdmin(); // Ադմինը տեսնում է ամեն ինչ
-            } else {
-                loadTasks(); // Սովորական օգտատերը տեսնում է ՄԻԱՅՆ ԻՐԵՆԸ
-            }
-        }
-
         // Ֆունկցիան, որը բերում է միայն տվյալ օգտատիրոջ task-երը
         async function loadTasks() {
-            try {
-                // Հարցման մեջ ուղարկում ենք userId-ն
-                const response = await fetch(`${API_BASE_URL}/TaskItem/getAllTasksOfUser`);
-                const tasks = await response.json();
+            const token = localStorage.getItem('jwtToken');
 
-                // renderTasks-ը կնկարի միայն ստացված (իր) task-երը
-                renderTasks(tasks);
+            try {
+                // ՃԻՇՏ ՀԱՍՑԵՆ: api/TaskItem/getAllTasksOfUser
+                const response = await fetch(`${API_BASE_URL}/TaskItem/getAllTasksOfUser`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    console.error(`Սերվերի սխալ ստատուս: ${response.status}`);
+                    alert(`Չհաջողվեց բեռնել գործերը: Սերվերը վերադարձրեց ${response.status}`);
+                    return;
+                }
+
+                const data = await response.json();
+                console.log("Tasks loaded:", data);
+
+                // Կոմենտի փոխարեն կանչում ենք ֆունկցիան՝ փոխանցելով տվյալները
+                renderTasks(data, 'task-list');
+                // Այստեղ քո հին UI-ի կոդն է (օրինակ՝ renderTasks(data))
+
             } catch (err) {
                 console.error("Error loading user tasks:", err);
             }
@@ -501,12 +586,35 @@
 
         // 2. Տեսնել բոլորի առաջադրանքները (Admin)
         async function loadAllTasksAdmin() {
-            const response = await fetch(`${API_BASE_URL}/TaskItem/getAllTasksOfAllUsers`);
-            const tasks = await response.json();
+            const token = localStorage.getItem('jwtToken');
 
-            const display = document.getElementById('admin-display-area');
-            display.innerHTML = '<h3 class="font-bold text-indigo-700">Բոլոր օգտատերերի առաջադրանքները:</h3>';
-            renderTasks(tasks, 'admin-display-area'); // Օգտագործում ենք նույն render-ը այլ տեղում
+            try {
+                const response = await fetch(`${API_BASE_URL}/TaskItem/getAllTasksOfAllUsers`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    console.error(`Սերվերի սխալ ստատուս: ${response.status}`);
+                    alert(`Չհաջողվեց բեռնել ադմինի գործերը։ Սերվերի ստատուսը՝ ${response.status}`);
+                    return;
+                }
+
+                const data = await response.json();
+                console.log("All admin tasks loaded:", data);
+
+                // Կանչում ենք renderTasks-ը ադմինի display area-ի համար
+                renderTasks(data, 'admin-display-area');
+
+                // Այստեղ քո հին UI-ի կոդն է ադմինի աղյուսակը լրացնելու համար
+
+            } catch (err) {
+                console.error("Error loading admin tasks:", err);
+                alert("Ադմինի գործերը բեռնելու սխալ։");
+            }
         }
 
         // 3. Տեսնել կոնկրետ օգտատիրոջ առաջադրանքները (ըստ ID)
@@ -526,6 +634,12 @@
             const newDate = prompt("Վերջնաժամկետ (YYYY-MM-DD):", oldDate ? oldDate.split('T')[0] : "");
             if (newDate === null) return;
 
+            const token = localStorage.getItem('jwtToken'); // Վերցնում ենք թոքենը
+            if (!token) {
+                alert("Նախ մուտք գործեք համակարգ:");
+                return;
+            }
+
             const taskData = {
                 id: id,
                 title: newTitle,
@@ -538,12 +652,17 @@
             try {
                 const response = await fetch(`${API_BASE_URL}/TaskItem/updateTask?id=${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` // ԱՎԵԼԱՑՎԱԾ Է․ Առանց սրա 401 Unauthorized կլիներ
+                    },
                     body: JSON.stringify(taskData)
                 });
 
                 if (response.ok) {
                     currentUser.isAdmin ? loadAllTasksAdmin() : loadTasks();
+                } else {
+                    alert("Չհաջողվեց խմբագրել առաջադրանքը:");
                 }
             } catch (err) {
                 console.error("Update error:", err);

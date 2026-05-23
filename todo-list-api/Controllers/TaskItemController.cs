@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using todo_list.DAL.DTO;
 using todo_list.DAL.Models;
 using todo_list.Services.Interfaces;
 
 namespace todo_list_api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class TaskItemController : ControllerBase
@@ -17,15 +20,47 @@ public class TaskItemController : ControllerBase
     }
 
     [HttpPost("createTask")]
-    public void CreateTask(TaskItemDTO dto)
+    [Authorize]
+    public IActionResult CreateTask(TaskItemDTO dto, int userId)
     {
-        _taskItemService.CreateTask(dto);
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+
+            if (userIdClaim == null)
+            {
+                return Unauthorized(new { message = "Օգտատերը վավերացված չէ:" });
+            }
+
+            int currentUserId = int.Parse(userIdClaim.Value);
+
+            // Կանչում ենք սերվիսը, որն էլ իր հերթին կկանչի քո ռեպոզիտորիան
+            _taskItemService.CreateTask(dto, currentUserId);
+
+            return Ok(new { message = "Գործը հաջողությամբ ստեղծվեց:" });
+        }
+        catch (Exception ex)
+        {
+            // Եթե ռեպոզիտորիայում ամսաթվի ստուգումը ձախողվի, ֆրոնտենդին կուղարկվի 400 սխալը
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("getAllTasksOfUser")]
     public List<TaskItemModel> GetAllTasksOfUser()
     {
-        return _taskItemService.GetAllTasksOfUser();
+        // 1. Կարդում ենք օգտատիրոջ ID-ն JWT թոքենի միջից
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+
+        if (userIdClaim == null)
+        {
+            throw new Exception("Unauthorized access");
+        }
+
+        int currentUserId = int.Parse(userIdClaim.Value);
+
+        // 2. Փոխանցում ենք այդ ID-ն սերվիսին, որպեսզի միայն իր գործերը բերի
+        return _taskItemService.GetAllTasksOfUser(currentUserId);
     }
 
     [HttpGet("getAllTasksOfAllUsers")]
@@ -34,13 +69,8 @@ public class TaskItemController : ControllerBase
         return _taskItemService.GetAllTasksOfAllUsers();
     }
 
-    [HttpGet("getTaskById")]
-    public TaskItemModel GetTaskById(int taskId)
-    {
-        return _taskItemService.GetTaskById(taskId);
-    }
-
     [HttpPut("updateTask")]
+    [Authorize]
     public void UpdateTask(int id, [FromBody] TaskItemModel updatedTask)
     {
         _taskItemService.UpdateTask(id, updatedTask);

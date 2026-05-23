@@ -24,18 +24,8 @@ public class UserService : IUserService
         _userRepository.userRegistration(userDto);
     }
 
-    public bool userLogin(LoginDTO loginDto)
+    public string userLogin(LoginDTO loginDto)
     {
         return _userRepository.userLogin(loginDto);
-    }
-
-    public bool userLogout(LoginDTO loginDto)
-    {
-        return _userRepository.userLogout(loginDto);
-    }
-
-    public UserModel getUserById(int id)
-    {
-        return _userRepository.getUserById(id);
     }
 }

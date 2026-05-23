@@ -10,7 +10,6 @@ public class User
 
     [MaxLength(100)]
     public string Password { get; set; }
-    public bool isLogged { get; set; }
 
     public bool IsAdmin { get; set; }
     public DateTime RegisteredDate { get; set; }
