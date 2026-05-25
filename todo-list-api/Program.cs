@@ -1,11 +1,12 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using todo_list.DAL;
 using todo_list.DAL.Interfaces;
 using todo_list.DAL.Repositories;
 using todo_list.Services.Interfaces;
 using todo_list.Services.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,13 +17,16 @@ builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 
 
-builder.Services.AddDbContext<ApplicationDBContext>();
+string? connectionString = builder.Configuration.GetConnectionString("TodoDb");
+builder.Services.AddDbContext<ApplicationDBContext>(options =>
+    options.UseSqlServer(connectionString));
+
 builder.Services.AddTransient<IUserRepository, UserRepository>();
 builder.Services.AddTransient<IUserService, UserService>();
 builder.Services.AddTransient<ITaskItemRepository, TaskItemRepository>();
 builder.Services.AddTransient<ITaskItemService, TaskItemService>();
 
-var jwtSecret = "YOUR_SUPER_SECRET_KEY_THAT_IS_LONG_ENOUGH_32_BYTES"; // Պետք է նույնը լինի, ինչ Repository-ում է
+var jwtSecret = builder.Configuration.GetConnectionString("JwtSecret"); // Պետք է նույնը լինի, ինչ Repository-ում է
 var key = Encoding.ASCII.GetBytes(jwtSecret);
 
 builder.Services.AddAuthentication(options =>

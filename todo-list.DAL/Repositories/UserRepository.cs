@@ -1,4 +1,5 @@
 ﻿using BCrypt.Net;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -13,7 +14,8 @@ namespace todo_list.DAL.Repositories;
 public class UserRepository : IUserRepository
 {
     private readonly ApplicationDBContext _dbContext;
-    private readonly string _jwtSecret = "YOUR_SUPER_SECRET_KEY_THAT_IS_LONG_ENOUGH_32_BYTES";
+    private readonly IConfiguration _configuration;
+    private string _jwtSecret;
 
     public UserRepository(ApplicationDBContext dbContext)
     {
@@ -65,6 +67,13 @@ public class UserRepository : IUserRepository
 
     private string GenerateJwtToken(User user)
     {
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                .AddJsonFile("appsettings.json")
+                .Build();
+
+        _jwtSecret = configuration.GetConnectionString("JwtSecret");
+
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_jwtSecret);
 
