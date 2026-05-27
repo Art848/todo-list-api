@@ -203,9 +203,15 @@
                     body: JSON.stringify({ username: user, password: pass })
                 });
 
-                // Եթե սերվերը վերադարձրել է սխալ ստատուս (օրինակ՝ 400 BadRequest կամ 401 Unauthorized)
+                // ✅ FIXED: Read the diagnostic error object returning from the C# controller
                 if (!response.ok) {
-                    alert("Մուտքը մերժված է. սխալ տվյալներ");
+                    try {
+                        const errorData = await response.json();
+                        alert("Մուտքի սխալ: " + (errorData.message || "Սխալ տվյալներ"));
+                    } catch (e) {
+                        const errorText = await response.text();
+                        alert("Սերվերի սխալ: " + errorText);
+                    }
                     return;
                 }
 
@@ -227,12 +233,11 @@
                         const tokenPayload = JSON.parse(decodedPayload);
                         console.log("Decoded Token Payload:", tokenPayload);
 
-                        // .NET-ի ClaimTypes-ները կարող են լինել երկար URL-ներով կամ կարճ անուններով՝ կախված սերվերի նախագծումից
                         const userId = tokenPayload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || tokenPayload.nameid || tokenPayload.sub;
                         const userName = tokenPayload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || tokenPayload.unique_name;
                         const userRole = tokenPayload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || tokenPayload.role;
 
-                        // 3. Պահում ենք ստացված 1003-ը լոկալ սթորիջում
+                        // 3. Պահում ենք ստացված ID-ն լոկալ սթորիջում
                         if (userId) {
                             localStorage.setItem('userId', userId);
                             console.log("UserId-ն հաջողությամբ պահվեց localStorage-ում:", userId);
@@ -258,10 +263,10 @@
                     const adminControls = document.getElementById('admin-controls');
                     if (currentUser.isAdmin) {
                         if (adminControls) adminControls.classList.remove('hidden');
-                        loadAllTasksAdmin(); // Բեռնում ենք բոլոր օգտատերերի գործերը
+                        loadAllTasksAdmin();
                     } else {
                         if (adminControls) adminControls.classList.add('hidden');
-                        loadTasks(); // Բեռնում ենք միայն տվյալ օգտատիրոջ գործերը
+                        loadTasks();
                     }
                 } else {
                     alert("Մուտքը մերժված է. թոքենը չի գտնվել սերվերի պատասխանի մեջ");

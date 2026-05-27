@@ -31,15 +31,11 @@ public class UserController : ControllerBase
     [HttpPost("userLogin")]
     public IActionResult Login([FromBody] LoginDTO loginDto)
     {
-        try
-        {
-            string token = _userService.userLogin(loginDto);
+        var token = _userService.userLogin(loginDto);
 
-            return Ok(new { token = token });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        if (token == null)
+            return Unauthorized(new { message = "Սխալ օգտանուն կամ գաղտնաբառ" });
+
+        return Ok(new { token = token });
     }
 }

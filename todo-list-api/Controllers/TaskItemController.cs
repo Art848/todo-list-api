@@ -35,7 +35,7 @@ public class TaskItemController : ControllerBase
             int currentUserId = int.Parse(userIdClaim.Value);
 
             // Կանչում ենք սերվիսը, որն էլ իր հերթին կկանչի քո ռեպոզիտորիան
-            _taskItemService.CreateTask(dto, currentUserId);
+            _taskItemService.createTask(dto, currentUserId);
 
             return Ok(new { message = "Գործը հաջողությամբ ստեղծվեց:" });
         }
@@ -60,31 +60,31 @@ public class TaskItemController : ControllerBase
         int currentUserId = int.Parse(userIdClaim.Value);
 
         // 2. Փոխանցում ենք այդ ID-ն սերվիսին, որպեսզի միայն իր գործերը բերի
-        return _taskItemService.GetAllTasksOfUser(currentUserId);
+        return _taskItemService.getAllTasksOfUser(currentUserId);
     }
 
     [HttpGet("getAllTasksOfAllUsers")]
     public List<TaskItemModel> GetAllTasksOfAllUsers()
     {
-        return _taskItemService.GetAllTasksOfAllUsers();
+        return _taskItemService.getAllTasksOfAllUsers();
     }
 
     [HttpPut("updateTask")]
     [Authorize]
     public void UpdateTask(int id, [FromBody] TaskItemModel updatedTask)
     {
-        _taskItemService.UpdateTask(id, updatedTask);
+        _taskItemService.updateTask(id, updatedTask);
     }
 
     [HttpDelete("deleteTask")]
     public void DeleteTask(int id)
     {
-        _taskItemService.DeleteTask(id);
+        _taskItemService.deleteTask(id);
     }
 
     [HttpPost("searchTaskByContainingTitle")]
     public List<TaskItemModel> SearchAllTasksContainingTitle([FromBody] string search)
     {
-        return _taskItemService.SearchAllTasksContainingTitle(search);
+        return _taskItemService.searchAllTasksContainingTitle(search);
     }
 }

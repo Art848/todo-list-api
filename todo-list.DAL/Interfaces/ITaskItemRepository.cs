@@ -1,14 +1,15 @@
-﻿using todo_list.DAL.DTO;
-using todo_list.DAL.Models;
+﻿using todo_list.DAL.Entities;
 
 namespace todo_list.DAL.Interfaces;
 
 public interface ITaskItemRepository
 {
-    void CreateTask(TaskItemDTO dto, int userId);
-    List<TaskItemModel> GetAllTasksOfUser(int userId);
-    List<TaskItemModel> GetAllTasksOfAllUsers();
-    void UpdateTask(int id, TaskItemModel updatedTask);
-    void DeleteTask(int id);
-    List<TaskItemModel> SearchAllTasksContainingTitle(string search);
+    void createTask(TaskItem task);
+    List<TaskItem> getAllTasksOfAllUsers();
+    List<TaskItem> getAllTasksOfUser(int userId);
+    void updateTask(TaskItem task);
+    void deleteTask(TaskItem task);
+    List<TaskItem> searchAllTasksContainingTitle(string search);
+    TaskItem getTaskById(int id);
+    User getAdminUser();
 }
